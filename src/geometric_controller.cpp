@@ -57,7 +57,7 @@ geometricCtrl::geometricCtrl(const ros::NodeHandle &nh, const ros::NodeHandle &n
   nh_private_.param<double>("drag_dz", dz_, 0.0);
   nh_private_.param<double>("attctrl_constant", attctrl_tau_, 0.1);
   nh_private_.param<double>("normalizedthrust_constant", norm_thrust_const_, 0.05); // 1 / max acceleration
-  nh_private_.param<double>("normalizedthrust_offset", norm_thrust_offset_, 0.1);   // 1 / max acceleration
+  nh_private_.param<double>("normalizedthrust_offset", norm_thrust_offset_, 0.0);   // 1 / max acceleration
   nh_private_.param<double>("Kp_x", Kpos_x_, 8.0);
   nh_private_.param<double>("Kp_y", Kpos_y_, 8.0);
   nh_private_.param<double>("Kp_z", Kpos_z_, 10.0);
@@ -113,7 +113,6 @@ void geometricCtrl::targetCallback(const geometry_msgs::TwistStamped &msg)
     targetAcc_ = Eigen::Vector3d::Zero();
 }
 
-
 void geometricCtrl::quadmsgCallback(const quadrotor_msgs::PositionCommand::ConstPtr &cmd)
 {
   node_state = MISSION_EXECUTION;
@@ -150,7 +149,7 @@ void geometricCtrl::flattargetCallback(const controller_msgs::FlatTarget &msg)
   targetVel_ = toEigen(msg.velocity);
 
   //if (mavVel_.norm() > 1)
-     //velocity_yaw_ = true;
+  //velocity_yaw_ = true;
   if (msg.type_mask == 1)
   {
     targetAcc_ = toEigen(msg.acceleration);
@@ -249,14 +248,14 @@ void geometricCtrl::cmdloopCallback(const ros::TimerEvent &event)
 
   case TAKING_OFF:
   {
-    	geometry_msgs::PoseStamped takingoff_msg;
-    	takingoff_msg.header.stamp = ros::Time::now();
-    	takingoff_msg.pose.position.x = initTargetPos_x_;
-    	takingoff_msg.pose.position.y = initTargetPos_y_;
-    	takingoff_msg.pose.position.z = initTargetPos_z_;
-    	target_pose_pub_.publish(takingoff_msg);
-    	ros::spinOnce();
-    	break;
+    geometry_msgs::PoseStamped takingoff_msg;
+    takingoff_msg.header.stamp = ros::Time::now();
+    takingoff_msg.pose.position.x = initTargetPos_x_;
+    takingoff_msg.pose.position.y = initTargetPos_y_;
+    takingoff_msg.pose.position.z = initTargetPos_z_;
+    target_pose_pub_.publish(takingoff_msg);
+    ros::spinOnce();
+    break;
   }
 
   case MISSION_EXECUTION:
@@ -270,7 +269,7 @@ void geometricCtrl::cmdloopCallback(const ros::TimerEvent &event)
 
   case LANDING:
   {
-    if(autoland())
+    if (autoland())
       node_state = LANDED;
     ros::spinOnce();
     break;
@@ -285,7 +284,7 @@ void geometricCtrl::cmdloopCallback(const ros::TimerEvent &event)
 bool geometricCtrl::autoland()
 {
   geometry_msgs::PoseStamped landingmsg;
-  if(mavPos_(2)<=0.3)
+  if (mavPos_(2) <= 0.3)
   {
     if (current_state_.mode != "AUTO.LAND")
     {
@@ -556,7 +555,7 @@ Eigen::Vector4d geometricCtrl::attcontroller(const Eigen::Vector4d &ref_att, con
   qe = quatMultiplication(q_inv, ref_att);
   ratecmd(0) = (2.0 / attctrl_tau_) * std::copysign(1.0, qe(0)) * qe(1);
   ratecmd(1) = (2.0 / attctrl_tau_) * std::copysign(1.0, qe(0)) * qe(2);
-  ratecmd(2) = (0.7 / attctrl_tau_) * std::copysign(1.0, qe(0)) * qe(3);
+  ratecmd(2) = (1.0 / attctrl_tau_) * std::copysign(1.0, qe(0)) * qe(3);
   rotmat = quat2RotMatrix(mavAtt_);
   zb = rotmat.col(2);
   ratecmd(3) =
